@@ -1,7 +1,7 @@
 use crate::{
     configuration::{DatabaseSettings, Settings},
     repositories::{EmailRepository, ImageRepository, UserRepository},
-    routes::{health_check, register},
+    routes::{health_check, login, register},
 };
 use axum::{
     routing::{get, post, IntoMakeService},
@@ -90,6 +90,7 @@ fn app(db_pool: PgPool) -> Router {
     Router::new()
         .route("/health_check", get(health_check))
         .route("/register", post(register))
+        .route("/api/auth/login", post(login))
         .layer(Extension(UserRepository::new(db_pool.clone())))
         .layer(Extension(ImageRepository::new(db_pool.clone())))
         .layer(Extension(EmailRepository::new(db_pool)))
