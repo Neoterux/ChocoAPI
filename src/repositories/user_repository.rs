@@ -35,6 +35,20 @@ impl UserRepository {
         .map_err(AppError::Sqlx)
     }
 
+    pub async fn get_user_by_username(&self, username: String) -> Result<User, AppError> {
+        sqlx::query_as!(
+            User,
+            r#"
+            SELECT * FROM users
+            WHERE username = $1
+            "#,
+            username
+        )
+        .fetch_one(&self.0)
+        .await
+        .map_err(AppError::Sqlx)
+    }
+
     // /// Get a single `User` by its id.
     // pub async fn get_by_id(&self, id: Uuid) -> Option<User> {
     //     sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", id)
