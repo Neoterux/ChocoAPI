@@ -126,6 +126,13 @@ pub enum AppError {
     // TODO: show how to report error to developers
     #[error("Un error interno ocurrió en el servidor.")]
     Eyre(#[from] eyre::Report),
+
+    /// Return `400 Bad Request`
+    #[error("Credenciales de acceso incorrectas o inválidas")]
+    BadCredentials,
+
+    #[error("Error en el servidor")]
+    ServerError,
 }
 
 impl AppError {
@@ -136,6 +143,8 @@ impl AppError {
             // Self::NotFound => StatusCode::NOT_FOUND,
             Self::UnprocessableEntity { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Sqlx(_) | Self::Eyre(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            &Self::BadCredentials => StatusCode::BAD_REQUEST,
+            &Self::ServerError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -157,22 +166,28 @@ impl IntoResponse for AppError {
                 // for the `401 Unauthorized` response code:
                 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
                 let mut hyper_response = details_7807.to_hyper_response();
-                hyper_response.headers_mut().append(header::WWW_AUTHENTICATE, HeaderValue::from_static("Token"));
+                hyper_response
+                    .headers_mut()
+                    .append(header::WWW_AUTHENTICATE, HeaderValue::from_static("Token"));
                 return hyper_response.into_response();
             }
             // add errors to response
             AppError::UnprocessableEntity(errors_map) => {
-                errors_map
-                    .iter()
-                    .for_each(|(key, errors)| {
-                        details_7807.set_value(key, errors);
-                    });
-            },
+                errors_map.iter().for_each(|(key, errors)| {
+                    details_7807.set_value(key, errors);
+                });
+            }
             AppError::Sqlx(ref error) => {
                 tracing::error!(?error, "SQLx error");
             }
             AppError::Eyre(ref error) => {
                 tracing::error!(?error, "generic error");
+            }
+            AppError::BadCredentials => {
+                tracing::info!("bad login request");
+            }
+            AppError::ServerError => {
+                tracing::error!("generic error");
             }
             // handle normally
             // AppError::Forbidden | AppError::NotFound => (),
